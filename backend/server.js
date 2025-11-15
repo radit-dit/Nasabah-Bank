@@ -1,3 +1,11 @@
+import express from "express";
+import cors from "cors";
+import rfidRoute from "./routes/rfid.js";
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/rfid", rfidRoute);
 // rfid-local-server/server.js
 
 // --- 1. REQUIRE DEPENDENCIES ---
