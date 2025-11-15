@@ -459,7 +459,7 @@ export default function RfidKiosk() {
                         onClick={() => {
                             // Data dummy untuk demo
                             setDisplayData({
-                                name: "Ahmad Wijaya",
+                                name: "Dummy User",
                                 accountNumber: "MSB-2024-001",
                                 balance: 15750000,
                                 transactions: [

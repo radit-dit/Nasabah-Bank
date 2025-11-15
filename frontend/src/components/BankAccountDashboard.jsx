@@ -3,7 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 
 export default function BankAccountDashboard() {
   const [accountData] = useState({
-    name: "Ahmad Wijaya",
+    name: "Dummy User",
     accountNumber: "1234567890",
     balance: 15750000,
     transactions: [
