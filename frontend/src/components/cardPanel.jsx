@@ -440,15 +440,15 @@ export default function RfidKiosk() {
 
     // Idle/Loading/Error View
     return (
-        <div className="min-h-screen flex flex-col justify-center items-center bg-gray-900 text-white p-6 relative">
-            <div className="w-full max-w-lg text-center p-10 bg-gray-800 rounded-2xl shadow-2xl border-b-8 border-blue-600">
+        <div className="min-h-screen flex flex-col justify-center items-center bg-blue-50 text-white p-6 relative">
+            <div className="w-full max-w-lg text-center p-10 bg-white rounded-2xl shadow-2xl border-b-8 border-blue-600">
                 <h1 className="text-5xl font-extrabold text-blue-500 mb-2">MetSchoo Bank</h1>
                 <p className="text-xl text-gray-400 mb-10">Sistem Keuangan Digital Sekolah</p>
 
                 {status === STATUS.IDLE && (
                     <>
-                        <CreditCard className="w-32 h-32 mx-auto mb-8 animate-pulse text-blue-400" />
-                        <h2 className="text-3xl font-bold tracking-tight">SILAHKAN SCAN KARTU ANDA</h2>
+                        <CreditCard className="w-32 h-32 mx-auto mb-8 animate-pulse text-blue-500" />
+                        <h2 className="text-3xl font-bold tracking-tight text-blue-500">SILAHKAN SCAN KARTU ANDA</h2>
                         <p className="mt-3 text-lg text-gray-500">Dekatkan kartu RFID ke reader untuk melihat saldo.</p>
                     </>
                 )}
