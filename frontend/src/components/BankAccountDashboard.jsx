@@ -12,7 +12,7 @@ export default function BankAccountDashboard() {
       { id: 3, date: "2024-11-12", description: "Transfer ke Ibu", amount: -2000000, type: "debit" },
       { id: 4, date: "2024-11-11", description: "Tarik Tunai ATM", amount: -500000, type: "debit" },
       { id: 5, date: "2024-11-10", description: "Cashback Promo", amount: 150000, type: "credit" },
-      { id: 6, date: "2024-11-09", description: "Bayar Listrik", amount: -350000, type: "debit" },
+      { id: 6, date: "2024-11-09", description: "Bayar Li                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ik", amount: -350000, type: "debit" },
       { id: 7, date: "2024-11-08", description: "Transfer Masuk", amount: 1200000, type: "credit" },
     ]
   });
