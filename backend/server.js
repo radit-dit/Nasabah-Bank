@@ -1,121 +1,82 @@
-import express from "express";
-import cors from "cors";
-import rfidRoute from "./routes/rfid.js";
+const dotenv = require('dotenv');
+const express = require('express');
+const cors = require('cors');
+const http = require('http');
+const { WebSocketServer } = require('ws');
+const rfidRoute = require('./routes/rfidRoute');
+const supabase = require('./supabaseClient'); // pastikan supabaseClient juga CommonJS
 
+dotenv.config();
+
+app.get('/', (req, res) => {
+  res.send("Backend berjalan!");
+});
+
+const app = express();
 app.use(cors());
 app.use(express.json());
 
 app.use("/api/rfid", rfidRoute);
-// rfid-local-server/server.js
 
-// --- 1. REQUIRE DEPENDENCIES ---
-const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
-
-// Digunakan saat Deployment di Orange Pi (Harus di-uncomment nanti)
-// const { SerialPort } = require('serialport');
-// const { ReadlineParser } = require('@serialport/parser-readline'); 
-
-// Import client Supabase yang sudah dikonfigurasi (menggunakan .env)
-const supabase = require('./supabaseClient'); 
-
-const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 const PORT = 3000;
 
-// --- 2. LOGIKA UTAMA RFID ---
+// --- RFID Logic ---
+app.get('/api/anggota/:rfidTag', async (req, res) => {
+    const rfidTag = req.params.rfidTag;
 
-// Logika ini akan menyimpan tag terakhir yang dibaca (baik dari mock atau SerialPort)
-let lastRfidTag = null; 
+    try {
+        const { data, error } = await supabase
+            .from('anggota')
+            .select(`
+                id,
+                nama, 
+                saldo, 
+                transaksi(waktu_transaksi, jenis_transaksi, jumlah)
+            `)
+            .eq('rfid_tag', rfidTag)
+            .limit(1);
 
-/**
- * Fungsi untuk mencatat (log) tap kartu ke database Supabase.
- * Ini penting untuk audit keamanan di sisi backend.
- * @param {string} tagId - ID Tag RFID yang dibaca.
- */
-async function logRfidTap(tagId) {
-    console.log(`[SUPABASE LOG] Mencatat tap untuk ID: ${tagId}`);
-    
-    // GANTI 'tap_log' DENGAN NAMA TABEL LOG ANDA JIKA BERBEDA
-    const { error } = await supabase
-        .from('tap_log') 
-        .insert({ 
-            rfid_tag: tagId, 
-            waktu_tap: new Date().toISOString() 
-        });
-
-    if (error) {
-        console.error('[SUPABASE ERROR] Gagal mencatat tap:', error.message);
-    } 
-}
-
-
-// A. LOGIKA MOCK RFID (Hanya untuk Pengujian Lokal di Laptop)
-// HAPUS ATAU COMMENT BAGIAN INI SAAT DEPLOYMENT KE ORANGE PI
-const MOCK_RFID_TAGS = ['12345678', '90123456', '88888888']; 
-let tagIndex = 0;
-
-setInterval(() => {
-    const mockTag = MOCK_RFID_TAGS[tagIndex];
-    
-    // 1. Catat ke Supabase (Jika perlu)
-    logRfidTap(mockTag);
-
-    // 2. Simpan Tag Terakhir
-    lastRfidTag = mockTag;
-
-    // 3. Kirim ke Frontend (melalui WebSocket)
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'RFID_READ', tagId: lastRfidTag }));
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Anggota tidak ditemukan.' });
         }
+
+        // Response ke Frontend/Hardware
+        res.status(201).json({ 
+        message: 'Pendaftaran Berhasil.', 
+        member: data[0]
     });
-    
-    tagIndex = (tagIndex + 1) % MOCK_RFID_TAGS.length;
-}, 5000); 
-// -----------------------------------------------------------
 
-
-/* // B. LOGIKA SERIAL PORT RFID (UNCOMMENT DAN GANTI DENGAN KODE INI SAAT DI ORANGE PI)
-
-const port = new SerialPort({ path: '/dev/ttyUSB0', baudRate: 9600 }); 
-const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
-
-parser.on('data', data => {
-    const rfidTag = data.trim();
-    console.log(`[RFID READ] Tag Diterima: ${rfidTag}`);
-
-    // 1. Catat ke Supabase
-    logRfidTap(rfidTag); 
-
-    // 2. Simpan Tag Terakhir
-    lastRfidTag = rfidTag;
-
-    // 3. Kirim ke Frontend (melalui WebSocket)
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'RFID_READ', tagId: lastRfidTag }));
-        }
-    });
-});
-*/
-
-
-// --- 3. LOGIKA SERVER EXPRESS & WEBSOCKET ---
-
-// Melayani file React yang sudah di-build dari folder 'build'
-app.use(express.static('build')); 
-
-// WebSocket Connection Handler
-wss.on('connection', function connection(ws) {
-    console.log('[WS] Frontend terhubung via WebSocket');
-    // Jika perlu, Anda bisa mengirim data status awal di sini
+    } catch (error) {
+        console.error('Error saat cek saldo:', error.message);
+        res.status(500).json({ message: 'Gagal memproses permintaan.' });
+    }
 });
 
-// Listener Server
+// --- API Anggota ---
+app.get("/api/anggota/:rfidTag", async (req, res) => {
+    const rfidTag = req.params.rfidTag;
+
+    const { data, error } = await supabase
+        .from("anggota")
+        .select(`
+            id,
+            nama,
+            saldo,
+            transaksi(waktu_transaksi, jenis_transaksi, jumlah)
+        `)
+        .eq("rfid_tag", rfidTag)
+        .limit(1);
+
+    if (error) return res.status(500).json({ message: "Database error." });
+    if (!data.length) return res.status(404).json({ message: "Anggota tidak ditemukan." });
+
+    res.json({ message: "OK", member: data[0] });
+});
+
 server.listen(PORT, () => {
-    console.log(`Server lokal berjalan di http://localhost:${PORT}`);
-    console.log('Pastikan frontend berjalan dan terhubung via WS.');
+    console.log(`Server berjalan di http://localhost:${PORT}`);
 });
