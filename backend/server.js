@@ -4,79 +4,53 @@ const cors = require('cors');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const rfidRoute = require('./routes/rfidRoute');
-const supabase = require('./supabaseClient'); // pastikan supabaseClient juga CommonJS
+const supabase = require('./supabaseClient');
 
 dotenv.config();
-
-app.get('/', (req, res) => {
-  res.send("Backend berjalan!");
-});
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Root
+app.get('/', (req, res) => {
+  res.send("Backend berjalan!");
+});
+
+// Route RFID
 app.use("/api/rfid", rfidRoute);
 
+// Ambil anggota berdasarkan RFID
+app.get("/api/anggota/:rfidTag", async (req, res) => {
+  const rfidTag = req.params.rfidTag.trim();
+  try {
+    const { data, error } = await supabase
+      .from("anggota")
+      .select(`
+        id,
+        nama,
+        saldo,
+        transaksi(waktu_transaksi, jenis_transaksi, jumlah)
+      `)
+      .eq("rfid_tag", rfidTag)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ message: "Member not found" });
+    }
+
+    res.status(200).json({ message: "OK", member: data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Server + WebSocket
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
-const PORT = 3000;
 
-// --- RFID Logic ---
-app.get('/api/anggota/:rfidTag', async (req, res) => {
-    const rfidTag = req.params.rfidTag;
-
-    try {
-        const { data, error } = await supabase
-            .from('anggota')
-            .select(`
-                id,
-                nama, 
-                saldo, 
-                transaksi(waktu_transaksi, jenis_transaksi, jumlah)
-            `)
-            .eq('rfid_tag', rfidTag)
-            .limit(1);
-
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            return res.status(404).json({ message: 'Anggota tidak ditemukan.' });
-        }
-
-        // Response ke Frontend/Hardware
-        res.status(201).json({ 
-        message: 'Pendaftaran Berhasil.', 
-        member: data[0]
-    });
-
-    } catch (error) {
-        console.error('Error saat cek saldo:', error.message);
-        res.status(500).json({ message: 'Gagal memproses permintaan.' });
-    }
-});
-
-// --- API Anggota ---
-app.get("/api/anggota/:rfidTag", async (req, res) => {
-    const rfidTag = req.params.rfidTag;
-
-    const { data, error } = await supabase
-        .from("anggota")
-        .select(`
-            id,
-            nama,
-            saldo,
-            transaksi(waktu_transaksi, jenis_transaksi, jumlah)
-        `)
-        .eq("rfid_tag", rfidTag)
-        .limit(1);
-
-    if (error) return res.status(500).json({ message: "Database error." });
-    if (!data.length) return res.status(404).json({ message: "Anggota tidak ditemukan." });
-
-    res.json({ message: "OK", member: data[0] });
-});
-
+const PORT = 3001;
 server.listen(PORT, () => {
-    console.log(`Server berjalan di http://localhost:${PORT}`);
+  console.log(`Server berjalan di http://localhost:${PORT}`);
 });
